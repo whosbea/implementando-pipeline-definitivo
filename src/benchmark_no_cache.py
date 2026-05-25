@@ -23,7 +23,7 @@ def build_massive_context(target_tokens: int = 12000) -> str:
         "Manual clínico: o paciente apresenta cefaleia pulsátil, fotofobia, "
         "náusea, rigidez muscular leve, histórico de episódios prévios e "
         "necessidade de correlação com sinais neurológicos, exames laboratoriais, "
-        "metadados de atendimento, evolução sintomática e conduta terapêutica. "
+        "evolução sintomática, metadados de atendimento e conduta terapêutica. "
     )
 
     text = []
@@ -31,6 +31,14 @@ def build_massive_context(target_tokens: int = 12000) -> str:
         text.append(paragraph)
 
     return " ".join(text)
+
+
+def save_metrics(metrics: dict) -> None:
+    OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
+    OUTPUT_FILE.write_text(
+        json.dumps(metrics, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
 
 
 def main() -> None:
@@ -52,7 +60,7 @@ def main() -> None:
         MODEL_NAME,
         quantization_config=quant_config,
         device_map="auto",
-        torch_dtype=torch.float16,
+        dtype=torch.float16,
     )
 
     model.config.use_cache = False
@@ -81,39 +89,60 @@ def main() -> None:
     print("Gerando 100 tokens sem KV Cache...")
     start = time.perf_counter()
 
-    with torch.no_grad():
-        outputs = model.generate(
-            **inputs,
-            max_new_tokens=100,
-            do_sample=False,
-            use_cache=False,
-            pad_token_id=tokenizer.eos_token_id,
-        )
+    try:
+        with torch.no_grad():
+            outputs = model.generate(
+                **inputs,
+                max_new_tokens=100,
+                do_sample=False,
+                use_cache=False,
+                pad_token_id=tokenizer.eos_token_id,
+            )
 
-    end = time.perf_counter()
+        end = time.perf_counter()
 
-    peak_vram_mb = torch.cuda.max_memory_allocated() / (1024 ** 2)
-    generation_time_s = end - start
+        peak_vram_mb = torch.cuda.max_memory_allocated() / (1024 ** 2)
+        generation_time_s = end - start
+        generated_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
 
-    generated_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
+        metrics = {
+            "model_name": MODEL_NAME,
+            "input_tokens": int(input_tokens),
+            "load_vram_mb": round(load_vram_mb, 2),
+            "peak_vram_mb": round(peak_vram_mb, 2),
+            "generation_time_s": round(generation_time_s, 2),
+            "use_cache": False,
+            "status": "success",
+        }
 
-    metrics = {
-        "model_name": MODEL_NAME,
-        "input_tokens": int(input_tokens),
-        "load_vram_mb": round(load_vram_mb, 2),
-        "peak_vram_mb": round(peak_vram_mb, 2),
-        "generation_time_s": round(generation_time_s, 2),
-        "use_cache": False,
-    }
+        save_metrics(metrics)
 
-    OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
-    OUTPUT_FILE.write_text(json.dumps(metrics, indent=2, ensure_ascii=False), encoding="utf-8")
+        print("\n=== MÉTRICAS ===")
+        print(json.dumps(metrics, indent=2, ensure_ascii=False))
 
-    print("\n=== MÉTRICAS ===")
-    print(json.dumps(metrics, indent=2, ensure_ascii=False))
+        print("\n=== AMOSTRA DE SAÍDA ===")
+        print(generated_text[:1000])
 
-    print("\n=== AMOSTRA DE SAÍDA ===")
-    print(generated_text[:1000])
+    except torch.OutOfMemoryError as e:
+        end = time.perf_counter()
+
+        metrics = {
+            "model_name": MODEL_NAME,
+            "input_tokens": int(input_tokens),
+            "load_vram_mb": round(load_vram_mb, 2),
+            "peak_vram_mb": None,
+            "generation_time_s": round(end - start, 2),
+            "use_cache": False,
+            "status": "oom",
+            "error": str(e).splitlines()[0],
+        }
+
+        save_metrics(metrics)
+
+        print("\n=== OOM CAPTURADO ===")
+        print(json.dumps(metrics, indent=2, ensure_ascii=False))
+
+        torch.cuda.empty_cache()
 
 
 if __name__ == "__main__":
