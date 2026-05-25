@@ -44,8 +44,8 @@ def main() -> None:
     print("Carregando tokenizer...")
     tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 
-    print("Carregando modelo em 4 bits com FlashAttention-2...")
-    model = AutoModelForCausalLM.from_pretrained(
+print("Carregando modelo em 4 bits com KV Cache habilitado...")
+model = AutoModelForCausalLM.from_pretrained(
         MODEL_NAME,
         quantization_config=quant_config,
         device_map="auto",
