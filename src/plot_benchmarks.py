@@ -18,21 +18,33 @@ def load_json(file_path: Path) -> dict:
 
 def save_memory_chart(no_cache: dict, optimized: dict) -> None:
     labels = ["Sem cache", "Otimizado"]
+
     load_vram = [
-        no_cache.get("load_vram_mb", 0),
-        optimized.get("load_vram_mb", 0),
+        no_cache.get("load_vram_mb", 0) or 0,
+        optimized.get("load_vram_mb", 0) or 0,
     ]
+
     peak_vram = [
-        no_cache.get("peak_vram_mb", 0),
-        optimized.get("peak_vram_mb", 0),
+        no_cache.get("peak_vram_mb", 0) or 0,
+        optimized.get("peak_vram_mb", 0) or 0,
     ]
 
     x = [0, 1]
     width = 0.35
 
     plt.figure(figsize=(10, 6))
-    plt.bar([i - width / 2 for i in x], load_vram, width=width, label="VRAM ao carregar (MB)")
-    plt.bar([i + width / 2 for i in x], peak_vram, width=width, label="Pico de VRAM (MB)")
+    plt.bar(
+        [i - width / 2 for i in x],
+        load_vram,
+        width=width,
+        label="VRAM ao carregar (MB)",
+    )
+    plt.bar(
+        [i + width / 2 for i in x],
+        peak_vram,
+        width=width,
+        label="Pico de VRAM (MB)",
+    )
 
     plt.xticks(x, labels)
     plt.ylabel("Memória (MB)")
@@ -45,7 +57,6 @@ def save_memory_chart(no_cache: dict, optimized: dict) -> None:
     plt.close()
 
     print(f"Gráfico salvo em: {output_file}")
-
 
 def save_time_chart(no_cache: dict, optimized: dict) -> None:
     labels = ["Sem cache", "Otimizado"]
