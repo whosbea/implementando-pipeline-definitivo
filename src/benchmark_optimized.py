@@ -44,13 +44,13 @@ def main() -> None:
     print("Carregando tokenizer...")
     tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 
-print("Carregando modelo em 4 bits com KV Cache habilitado...")
-model = AutoModelForCausalLM.from_pretrained(
-        MODEL_NAME,
-        quantization_config=quant_config,
-        device_map="auto",
-        dtype=torch.float16,
-    )
+    print("Carregando modelo em 4 bits com KV Cache habilitado...")
+    model = AutoModelForCausalLM.from_pretrained(
+            MODEL_NAME,
+            quantization_config=quant_config,
+            device_map="auto",
+            dtype=torch.float16,
+        )
 
     model.config.use_cache = True
 
