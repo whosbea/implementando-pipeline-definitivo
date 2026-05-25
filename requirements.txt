@@ -3,3 +3,4 @@ torch
 bitsandbytes
 accelerate
 sentencepiece
+matplotlib
