@@ -50,7 +50,6 @@ def main() -> None:
         quantization_config=quant_config,
         device_map="auto",
         dtype=torch.float16,
-        attn_implementation="flash_attention_2",
     )
 
     model.config.use_cache = True
